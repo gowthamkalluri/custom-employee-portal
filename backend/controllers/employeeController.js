@@ -57,7 +57,47 @@ const createEmployee = async (req, res) => {
   }
 };
 
+const updateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { department, job_title, phone, joining_date } = req.body;
+
+    if (!department || !job_title) {
+      return res.status(400).json({
+        message: "department and job_title are required",
+      });
+    }
+
+    const [result] = await pool.execute(
+      `UPDATE employees
+       SET department = ?,
+           job_title = ?,
+           phone = ?,
+           joining_date = ?
+       WHERE id = ?`,
+      [department, job_title, phone || null, joining_date || null, id],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: "Employee not found",
+      });
+    }
+
+    res.json({
+      message: "Employee updated successfully",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to update employee",
+    });
+  }
+};
+
 module.exports = {
   getEmployees,
   createEmployee,
+  updateEmployee,
 };
