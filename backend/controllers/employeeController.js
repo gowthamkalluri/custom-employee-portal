@@ -27,6 +27,37 @@ const getEmployees = async (req, res) => {
   }
 };
 
+const createEmployee = async (req, res) => {
+  try {
+    const { user_id, department, job_title, phone, joining_date } = req.body;
+
+    if (!user_id || !department || !job_title) {
+      return res.status(400).json({
+        message: "user_id, department and job_title are required",
+      });
+    }
+
+    const [result] = await pool.execute(
+      `INSERT INTO employees
+       (user_id, department, job_title, phone, joining_date)
+       VALUES (?, ?, ?, ?, ?)`,
+      [user_id, department, job_title, phone || null, joining_date || null],
+    );
+
+    res.status(201).json({
+      message: "Employee created successfully",
+      employeeId: result.insertId,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to create employee",
+    });
+  }
+};
+
 module.exports = {
   getEmployees,
+  createEmployee,
 };
