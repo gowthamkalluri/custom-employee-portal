@@ -5,6 +5,7 @@ const {
   getEmployees,
   createEmployee,
   updateEmployee,
+  deleteEmployee,
 } = require("../controllers/employeeController");
 
 const router = express.Router();
@@ -28,6 +29,13 @@ router.put(
   authMiddleware,
   permissionMiddleware("update_employee"),
   updateEmployee,
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  permissionMiddleware("delete_employee"),
+  deleteEmployee,
 );
 
 module.exports = router;
