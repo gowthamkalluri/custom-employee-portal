@@ -11,6 +11,12 @@ const applyLeave = async (req, res) => {
       });
     }
 
+    if (new Date(end_date) < new Date(start_date)) {
+      return res.status(400).json({
+        message: "End date cannot be before start date",
+      });
+    }
+
     const [employees] = await pool.execute(
       `SELECT id
        FROM employees
@@ -110,6 +116,25 @@ const updateLeaveStatus = async (req, res) => {
     if (!status || !["Approved", "Rejected"].includes(status)) {
       return res.status(400).json({
         message: "Status must be Approved or Rejected",
+      });
+    }
+
+    const [leaves] = await pool.execute(
+      `SELECT status
+   FROM leaves
+   WHERE id = ?`,
+      [id],
+    );
+
+    if (leaves.length === 0) {
+      return res.status(404).json({
+        message: "Leave request not found",
+      });
+    }
+
+    if (leaves[0].status !== "Pending") {
+      return res.status(400).json({
+        message: "Only pending leave requests can be updated",
       });
     }
 
