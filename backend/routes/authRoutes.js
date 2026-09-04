@@ -1,5 +1,10 @@
 const express = require("express");
-const { register, login } = require("../controllers/authController");
+const {
+  register,
+  login,
+  getProfile,
+  updateProfile,
+} = require("../controllers/authController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 const permissionMiddleware = require("../middleware/permissionMiddleware");
@@ -9,12 +14,14 @@ const router = express.Router();
 router.post("/register", register);
 router.post("/login", login);
 
-router.get("/profile", authMiddleware, (req, res) => {
-  res.json({
-    message: "You accessed a protected route",
-    user: req.user,
-  });
-});
+router.get("/profile", authMiddleware, getProfile);
+
+router.put(
+  "/profile",
+  authMiddleware,
+  permissionMiddleware("update_profile"),
+  updateProfile,
+);
 
 router.get(
   "/admin-test",
@@ -35,7 +42,7 @@ router.get(
     res.json({
       message: "You have permission to view employees.",
     });
-  }
+  },
 );
 
 module.exports = router;

@@ -90,7 +90,81 @@ const login = async (req, res) => {
   }
 };
 
+const getProfile = async (req, res) => {
+  try {
+    const [users] = await pool.execute(
+      `SELECT
+        u.id,
+        u.name,
+        u.email,
+        r.name AS role,
+        e.department,
+        e.job_title,
+        e.phone,
+        e.joining_date
+       FROM users u
+       JOIN roles r ON u.role_id = r.id
+       LEFT JOIN employees e ON u.id = e.user_id
+       WHERE u.id = ?`,
+      [req.user.userId],
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      user: users[0],
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to fetch profile",
+    });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({
+        message: "Name and email are required",
+      });
+    }
+
+    const [result] = await pool.execute(
+      `UPDATE users
+       SET name = ?, email = ?
+       WHERE id = ?`,
+      [name, email, req.user.userId],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      message: "Profile updated successfully",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to update profile",
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
+  getProfile,
+  updateProfile,
 };
