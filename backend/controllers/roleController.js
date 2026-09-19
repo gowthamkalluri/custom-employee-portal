@@ -137,7 +137,7 @@ const deleteRole = async (req, res) => {
     const { id } = req.params;
 
     // Prevent deletion of the default system roles.
-    if ([1, 2, 3, 4, 8].includes(Number(id))) {
+    if ([1, 2, 3, 4].includes(Number(id))) {
       return res.status(400).json({
         message: "Default system roles cannot be deleted",
       });

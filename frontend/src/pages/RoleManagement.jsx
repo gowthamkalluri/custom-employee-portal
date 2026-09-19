@@ -2,8 +2,15 @@ import { useEffect, useState } from "react";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
 
+const DEFAULT_ROLE_IDS = [1, 2, 3, 4];
+
 const RoleManagement = () => {
   const [roles, setRoles] = useState([]);
+  const [permissions, setPermissions] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -12,7 +19,6 @@ const RoleManagement = () => {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
-  const [permissions, setPermissions] = useState([]);
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState([]);
 
@@ -21,6 +27,8 @@ const RoleManagement = () => {
 
   const fetchRoles = async () => {
     try {
+      setError("");
+
       const response = await api.get("/roles");
       setRoles(response.data.roles);
     } catch (error) {
@@ -28,9 +36,23 @@ const RoleManagement = () => {
     }
   };
 
+  const fetchPermissions = async () => {
+    try {
+      const response = await api.get("/permissions");
+      setPermissions(response.data.permissions);
+    } catch (error) {
+      setError(error.response?.data?.message || "Failed to load permissions");
+    }
+  };
+
   useEffect(() => {
-    fetchRoles();
-    fetchPermissions();
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchRoles(), fetchPermissions()]);
+      setLoading(false);
+    };
+
+    loadData();
   }, []);
 
   const handleCreateRole = async (event) => {
@@ -38,6 +60,7 @@ const RoleManagement = () => {
 
     setError("");
     setSuccess("");
+    setSaving(true);
 
     try {
       await api.post("/roles", {
@@ -50,9 +73,11 @@ const RoleManagement = () => {
       setName("");
       setDescription("");
 
-      fetchRoles();
+      await fetchRoles();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to create role");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -70,6 +95,7 @@ const RoleManagement = () => {
 
     setError("");
     setSuccess("");
+    setSaving(true);
 
     try {
       await api.put(`/roles/${editingRole.id}`, {
@@ -83,9 +109,11 @@ const RoleManagement = () => {
       setEditName("");
       setEditDescription("");
 
-      fetchRoles();
+      await fetchRoles();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to update role");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -100,24 +128,18 @@ const RoleManagement = () => {
 
     setError("");
     setSuccess("");
+    setDeletingId(role.id);
 
     try {
       await api.delete(`/roles/${role.id}`);
 
       setSuccess("Role deleted successfully.");
 
-      fetchRoles();
+      await fetchRoles();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to delete role");
-    }
-  };
-
-  const fetchPermissions = async () => {
-    try {
-      const response = await api.get("/permissions");
-      setPermissions(response.data.permissions);
-    } catch (error) {
-      setError(error.response?.data?.message || "Failed to load permissions");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -168,6 +190,7 @@ const RoleManagement = () => {
 
     setError("");
     setSuccess("");
+    setSaving(true);
 
     try {
       await api.put(`/roles/${selectedRoleId}/permissions`, {
@@ -179,6 +202,8 @@ const RoleManagement = () => {
       setError(
         error.response?.data?.message || "Failed to update role permissions",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -195,176 +220,211 @@ const RoleManagement = () => {
         {error && <p className="error-message">{error}</p>}
         {success && <p className="success-message">{success}</p>}
 
-        <div className="info-card">
-          <h2>Create Role</h2>
+        {loading ? (
+          <p>Loading roles and permissions...</p>
+        ) : (
+          <>
+            <div className="info-card">
+              <h2>Create Role</h2>
 
-          <form onSubmit={handleCreateRole} className="admin-form">
-            <div className="form-group">
-              <label>Role Name</label>
+              <form onSubmit={handleCreateRole} className="admin-form">
+                <div className="form-group">
+                  <label>Role Name</label>
 
-              <input
-                type="text"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                required
-              />
-            </div>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    required
+                  />
+                </div>
 
-            <div className="form-group">
-              <label>Description</label>
+                <div className="form-group">
+                  <label>Description</label>
 
-              <input
-                type="text"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-              />
-            </div>
-
-            <button type="submit" className="primary-button">
-              Create Role
-            </button>
-          </form>
-        </div>
-
-        {editingRole && (
-          <div className="info-card">
-            <h2>Edit Role</h2>
-
-            <form onSubmit={handleUpdateRole} className="admin-form">
-              <div className="form-group">
-                <label>Role Name</label>
-
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(event) => setEditName(event.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Description</label>
-
-                <input
-                  type="text"
-                  value={editDescription}
-                  onChange={(event) => setEditDescription(event.target.value)}
-                />
-              </div>
-
-              <div>
-                <button type="submit" className="primary-button">
-                  Update Role
-                </button>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                  />
+                </div>
 
                 <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setEditingRole(null)}
+                  type="submit"
+                  className="primary-button"
+                  disabled={saving}
                 >
-                  Cancel
+                  {saving ? "Creating..." : "Create Role"}
                 </button>
-              </div>
-            </form>
-          </div>
-        )}
+              </form>
+            </div>
 
-        <div className="info-card">
-          <h2>Roles</h2>
+            {editingRole && (
+              <div className="info-card">
+                <h2>Edit Role</h2>
 
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Role</th>
-                  <th>Description</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+                <form onSubmit={handleUpdateRole} className="admin-form">
+                  <div className="form-group">
+                    <label>Role Name</label>
 
-              <tbody>
-                {roles.map((role) => (
-                  <tr key={role.id}>
-                    <td>{role.id}</td>
-                    <td>{role.name}</td>
-                    <td>{role.description || "-"}</td>
-
-                    <td>
-                      <button
-                        className="edit-button"
-                        onClick={() => handleEdit(role)}
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        className="delete-button"
-                        onClick={() => handleDelete(role)}
-                        disabled={[1, 2, 3, 4, 8].includes(role.id)}
-                        title={
-                          [1, 2, 3, 4, 8].includes(role.id)
-                            ? "Default roles cannot be deleted"
-                            : "Delete role"
-                        }
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div className="info-card">
-          <h2>Assign Permissions</h2>
-
-          <div className="form-group">
-            <label>Select Role</label>
-
-            <select value={selectedRoleId} onChange={handleRoleSelection}>
-              <option value="">Select a role</option>
-
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {selectedRoleId && (
-            <>
-              <div className="permissions-list">
-                {permissions.map((permission) => (
-                  <label key={permission.id} className="permission-item">
                     <input
-                      type="checkbox"
-                      checked={selectedPermissions.includes(permission.id)}
-                      onChange={() => handlePermissionChange(permission.id)}
+                      type="text"
+                      value={editName}
+                      onChange={(event) => setEditName(event.target.value)}
+                      required
                     />
+                  </div>
 
-                    <span>
-                      <strong>{permission.name}</strong>
+                  <div className="form-group">
+                    <label>Description</label>
 
-                      {permission.description && (
-                        <small>{permission.description}</small>
-                      )}
-                    </span>
-                  </label>
-                ))}
+                    <input
+                      type="text"
+                      value={editDescription}
+                      onChange={(event) =>
+                        setEditDescription(event.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <button
+                      type="submit"
+                      className="primary-button"
+                      disabled={saving}
+                    >
+                      {saving ? "Updating..." : "Update Role"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => setEditingRole(null)}
+                      disabled={saving}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="info-card">
+              <h2>Roles</h2>
+
+              {roles.length === 0 ? (
+                <p>No roles found.</p>
+              ) : (
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Role</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {roles.map((role) => {
+                        const isDefaultRole = DEFAULT_ROLE_IDS.includes(
+                          role.id,
+                        );
+
+                        return (
+                          <tr key={role.id}>
+                            <td>{role.id}</td>
+                            <td>{role.name}</td>
+                            <td>{role.description || "-"}</td>
+
+                            <td>
+                              <button
+                                className="edit-button"
+                                onClick={() => handleEdit(role)}
+                                disabled={saving || deletingId !== null}
+                              >
+                                Edit
+                              </button>
+
+                              <button
+                                className="delete-button"
+                                onClick={() => handleDelete(role)}
+                                disabled={
+                                  isDefaultRole || deletingId === role.id
+                                }
+                                title={
+                                  isDefaultRole
+                                    ? "Default roles cannot be deleted"
+                                    : "Delete role"
+                                }
+                              >
+                                {deletingId === role.id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="info-card">
+              <h2>Assign Permissions</h2>
+
+              <div className="form-group">
+                <label>Select Role</label>
+
+                <select value={selectedRoleId} onChange={handleRoleSelection}>
+                  <option value="">Select a role</option>
+
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <button
-                className="primary-button"
-                onClick={handleSavePermissions}
-              >
-                Save Permissions
-              </button>
-            </>
-          )}
-        </div>
+              {selectedRoleId && (
+                <>
+                  <div className="permissions-list">
+                    {permissions.map((permission) => (
+                      <label key={permission.id} className="permission-item">
+                        <input
+                          type="checkbox"
+                          checked={selectedPermissions.includes(permission.id)}
+                          onChange={() => handlePermissionChange(permission.id)}
+                          disabled={saving}
+                        />
+
+                        <span>
+                          <strong>{permission.name}</strong>
+
+                          {permission.description && (
+                            <small>{permission.description}</small>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <button
+                    className="primary-button"
+                    onClick={handleSavePermissions}
+                    disabled={saving}
+                  >
+                    {saving ? "Saving..." : "Save Permissions"}
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </main>
     </>
   );

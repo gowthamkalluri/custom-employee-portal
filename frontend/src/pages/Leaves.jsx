@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/api";
+import Navbar from "../components/Navbar";
 
 const Leaves = () => {
   const [leaves, setLeaves] = useState([]);
@@ -13,13 +14,15 @@ const Leaves = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [applying, setApplying] = useState(false);
+  const [updatingLeaveId, setUpdatingLeaveId] = useState(null);
 
   const fetchProfile = async () => {
     try {
       const response = await api.get("/auth/profile");
       setProfile(response.data.user);
     } catch (error) {
-      console.error(error);
+      setError(error.response?.data?.message || "Failed to load profile");
     }
   };
 
@@ -46,6 +49,7 @@ const Leaves = () => {
 
     setError("");
     setSuccess("");
+    setApplying(true);
 
     try {
       await api.post("/leaves", {
@@ -62,15 +66,18 @@ const Leaves = () => {
       setEndDate("");
       setReason("");
 
-      fetchLeaves();
+      await fetchLeaves();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to apply for leave");
+    } finally {
+      setApplying(false);
     }
   };
 
   const handleStatusUpdate = async (id, status) => {
     setError("");
     setSuccess("");
+    setUpdatingLeaveId(id);
 
     try {
       await api.put(`/leaves/${id}/status`, {
@@ -79,11 +86,13 @@ const Leaves = () => {
 
       setSuccess(`Leave ${status.toLowerCase()} successfully.`);
 
-      fetchLeaves();
+      await fetchLeaves();
     } catch (error) {
       setError(
         error.response?.data?.message || "Failed to update leave status",
       );
+    } finally {
+      setUpdatingLeaveId(null);
     }
   };
 
@@ -93,154 +102,161 @@ const Leaves = () => {
     profile?.role === "Manager";
 
   return (
-    <main className="page-container">
-      <div className="page-header">
-        <h1>Leaves</h1>
-        <p>Manage your leave requests and approvals.</p>
-      </div>
+    <>
+      <Navbar />
 
-      {error && <p className="error-message">{error}</p>}
-
-      {success && <p className="success-message">{success}</p>}
-
-      {/* Apply Leave */}
-      <div className="leave-form-card">
-        <h2>Apply for Leave</h2>
-
-        <form onSubmit={handleApplyLeave}>
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="leaveType">Leave Type</label>
-
-              <select
-                id="leaveType"
-                value={leaveType}
-                onChange={(e) => setLeaveType(e.target.value)}
-              >
-                <option value="Sick">Sick</option>
-                <option value="Casual">Casual</option>
-                <option value="Emergency">Emergency</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="startDate">Start Date</label>
-
-              <input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="endDate">End Date</label>
-
-              <input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="reason">Reason</label>
-
-            <textarea
-              id="reason"
-              rows="4"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Enter reason for leave"
-              required
-            />
-          </div>
-
-          <button type="submit" className="primary-button">
-            Apply Leave
-          </button>
-        </form>
-      </div>
-
-      {/* Leave List */}
-      <div className="page-header">
-        <h2>Leave Requests</h2>
-      </div>
-
-      {loading ? (
-        <p>Loading leaves...</p>
-      ) : leaves.length === 0 ? (
-        <div className="empty-state">
-          <p>No leave requests found.</p>
+      <main className="page-container">
+        <div className="page-header">
+          <h1>Leaves</h1>
+          <p>Manage your leave requests and approvals.</p>
         </div>
-      ) : (
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Employee</th>
-                <th>Leave Type</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Reason</th>
-                <th>Status</th>
 
-                {canManageLeaves && <th>Action</th>}
-              </tr>
-            </thead>
+        {error && <p className="error-message">{error}</p>}
 
-            <tbody>
-              {leaves.map((leave) => (
-                <tr key={leave.id}>
-                  <td>{leave.employee_name}</td>
+        {success && <p className="success-message">{success}</p>}
 
-                  <td>{leave.leave_type}</td>
+        <div className="leave-form-card">
+          <h2>Apply for Leave</h2>
 
-                  <td>{leave.start_date}</td>
+          <form onSubmit={handleApplyLeave}>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="leaveType">Leave Type</label>
 
-                  <td>{leave.end_date}</td>
+                <select
+                  id="leaveType"
+                  value={leaveType}
+                  onChange={(e) => setLeaveType(e.target.value)}
+                >
+                  <option value="Sick">Sick</option>
+                  <option value="Casual">Casual</option>
+                  <option value="Emergency">Emergency</option>
+                </select>
+              </div>
 
-                  <td>{leave.reason}</td>
+              <div className="form-group">
+                <label htmlFor="startDate">Start Date</label>
 
-                  <td>{leave.status}</td>
+                <input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  required
+                />
+              </div>
 
-                  {canManageLeaves && (
-                    <td>
-                      {leave.status === "Pending" ? (
-                        <>
-                          <button
-                            onClick={() =>
-                              handleStatusUpdate(leave.id, "Approved")
-                            }
-                          >
-                            Approve
-                          </button>
+              <div className="form-group">
+                <label htmlFor="endDate">End Date</label>
 
-                          <button
-                            onClick={() =>
-                              handleStatusUpdate(leave.id, "Rejected")
-                            }
-                          >
-                            Reject
-                          </button>
-                        </>
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </td>
-                  )}
+                <input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="reason">Reason</label>
+
+              <textarea
+                id="reason"
+                rows="4"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Enter reason for leave"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={applying}
+            >
+              {applying ? "Applying..." : "Apply Leave"}
+            </button>
+          </form>
+        </div>
+
+        <div className="page-header">
+          <h2>Leave Requests</h2>
+        </div>
+
+        {loading ? (
+          <p>Loading leaves...</p>
+        ) : leaves.length === 0 ? (
+          <div className="empty-state">
+            <p>No leave requests found.</p>
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Leave Type</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+
+                  {canManageLeaves && <th>Action</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </main>
+              </thead>
+
+              <tbody>
+                {leaves.map((leave) => (
+                  <tr key={leave.id}>
+                    <td>{leave.employee_name}</td>
+                    <td>{leave.leave_type}</td>
+                    <td>{leave.start_date}</td>
+                    <td>{leave.end_date}</td>
+                    <td>{leave.reason}</td>
+                    <td>{leave.status}</td>
+
+                    {canManageLeaves && (
+                      <td>
+                        {leave.status === "Pending" ? (
+                          <>
+                            <button
+                              onClick={() =>
+                                handleStatusUpdate(leave.id, "Approved")
+                              }
+                              disabled={updatingLeaveId === leave.id}
+                            >
+                              {updatingLeaveId === leave.id
+                                ? "Updating..."
+                                : "Approve"}
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleStatusUpdate(leave.id, "Rejected")
+                              }
+                              disabled={updatingLeaveId === leave.id}
+                            >
+                              {updatingLeaveId === leave.id
+                                ? "Updating..."
+                                : "Reject"}
+                            </button>
+                          </>
+                        ) : (
+                          <span>-</span>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </main>
+    </>
   );
 };
 

@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const pool = require("../config/db");
+const createAuditLog = require("../utils/auditLogger");
 
 const register = async (req, res) => {
   try {
@@ -52,6 +53,14 @@ const login = async (req, res) => {
     );
 
     if (users.length === 0) {
+      await createAuditLog({
+        userId: null,
+        action: "LOGIN_FAILED",
+        resource: "AUTH",
+        details: `Failed login attempt for email: ${email}`,
+        ipAddress: req.ip,
+      });
+
       return res.status(401).json({
         message: "Invalid email or password",
       });
@@ -62,6 +71,14 @@ const login = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
+      await createAuditLog({
+        userId: user.id,
+        action: "LOGIN_FAILED",
+        resource: "AUTH",
+        details: "Invalid password",
+        ipAddress: req.ip,
+      });
+
       return res.status(401).json({
         message: "Invalid email or password",
       });
@@ -76,6 +93,14 @@ const login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1h" },
     );
+
+    await createAuditLog({
+      userId: user.id,
+      action: "LOGIN_SUCCESS",
+      resource: "AUTH",
+      details: "Successful login",
+      ipAddress: req.ip,
+    });
 
     res.json({
       message: "Login successful",

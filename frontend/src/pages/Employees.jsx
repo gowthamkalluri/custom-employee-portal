@@ -21,6 +21,8 @@ const Employees = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchProfile = async () => {
     try {
@@ -70,6 +72,7 @@ const Employees = () => {
 
     setError("");
     setSuccess("");
+    setSubmitting(true);
 
     const employeeData = {
       name,
@@ -97,6 +100,8 @@ const Employees = () => {
       fetchEmployees();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to save employee");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -132,6 +137,8 @@ const Employees = () => {
     setSuccess("");
 
     try {
+      setDeletingId(id);
+
       await api.delete(`/employees/${id}`);
 
       setSuccess("Employee deleted successfully.");
@@ -139,6 +146,8 @@ const Employees = () => {
       fetchEmployees();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to delete employee");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -279,8 +288,16 @@ const Employees = () => {
                 </div>
               </div>
 
-              <button type="submit" className="primary-button">
-                {editingEmployee ? "Update Employee" : "Create Employee"}
+              <button
+                type="submit"
+                className="primary-button"
+                disabled={submitting}
+              >
+                {submitting
+                  ? "Saving..."
+                  : editingEmployee
+                    ? "Update Employee"
+                    : "Create Employee"}
               </button>
             </form>
           </div>
@@ -331,8 +348,11 @@ const Employees = () => {
                         <button
                           className="delete-button"
                           onClick={() => handleDelete(employee.id)}
+                          disabled={deletingId === employee.id}
                         >
-                          Delete
+                          {deletingId === employee.id
+                            ? "Deleting..."
+                            : "Delete"}
                         </button>
                       </td>
                     )}

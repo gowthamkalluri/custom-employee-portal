@@ -12,15 +12,23 @@ const PermissionManagement = () => {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingPermissionId, setDeletingPermissionId] = useState(null);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const fetchPermissions = async () => {
     try {
+      setError("");
+
       const response = await api.get("/permissions");
       setPermissions(response.data.permissions);
     } catch (error) {
       setError(error.response?.data?.message || "Failed to load permissions");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,6 +41,7 @@ const PermissionManagement = () => {
 
     setError("");
     setSuccess("");
+    setSubmitting(true);
 
     try {
       await api.post("/permissions", {
@@ -45,9 +54,11 @@ const PermissionManagement = () => {
       setName("");
       setDescription("");
 
-      fetchPermissions();
+      await fetchPermissions();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to create permission");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -65,6 +76,7 @@ const PermissionManagement = () => {
 
     setError("");
     setSuccess("");
+    setSubmitting(true);
 
     try {
       await api.put(`/permissions/${editingPermission.id}`, {
@@ -78,9 +90,11 @@ const PermissionManagement = () => {
       setEditName("");
       setEditDescription("");
 
-      fetchPermissions();
+      await fetchPermissions();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to update permission");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -95,15 +109,18 @@ const PermissionManagement = () => {
 
     setError("");
     setSuccess("");
+    setDeletingPermissionId(permission.id);
 
     try {
       await api.delete(`/permissions/${permission.id}`);
 
       setSuccess("Permission deleted successfully.");
 
-      fetchPermissions();
+      await fetchPermissions();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to delete permission");
+    } finally {
+      setDeletingPermissionId(null);
     }
   };
 
@@ -147,8 +164,12 @@ const PermissionManagement = () => {
               />
             </div>
 
-            <button type="submit" className="primary-button">
-              Create Permission
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={submitting}
+            >
+              {submitting ? "Creating..." : "Create Permission"}
             </button>
           </form>
         </div>
@@ -180,14 +201,19 @@ const PermissionManagement = () => {
               </div>
 
               <div>
-                <button type="submit" className="primary-button">
-                  Update Permission
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={submitting}
+                >
+                  {submitting ? "Updating..." : "Update Permission"}
                 </button>
 
                 <button
                   type="button"
                   className="secondary-button"
                   onClick={() => setEditingPermission(null)}
+                  disabled={submitting}
                 >
                   Cancel
                 </button>
@@ -199,44 +225,58 @@ const PermissionManagement = () => {
         <div className="info-card">
           <h2>Permissions</h2>
 
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Permission</th>
-                  <th>Description</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {permissions.map((permission) => (
-                  <tr key={permission.id}>
-                    <td>{permission.id}</td>
-                    <td>{permission.name}</td>
-                    <td>{permission.description || "-"}</td>
-
-                    <td>
-                      <button
-                        className="edit-button"
-                        onClick={() => handleEdit(permission)}
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        className="delete-button"
-                        onClick={() => handleDelete(permission)}
-                      >
-                        Delete
-                      </button>
-                    </td>
+          {loading ? (
+            <p>Loading permissions...</p>
+          ) : permissions.length === 0 ? (
+            <div className="empty-state">
+              <p>No permissions found.</p>
+            </div>
+          ) : (
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Permission</th>
+                    <th>Description</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+
+                <tbody>
+                  {permissions.map((permission) => (
+                    <tr key={permission.id}>
+                      <td>{permission.id}</td>
+                      <td>{permission.name}</td>
+                      <td>{permission.description || "-"}</td>
+
+                      <td>
+                        <button
+                          className="edit-button"
+                          onClick={() => handleEdit(permission)}
+                          disabled={submitting || deletingPermissionId !== null}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          className="delete-button"
+                          onClick={() => handleDelete(permission)}
+                          disabled={
+                            submitting || deletingPermissionId === permission.id
+                          }
+                        >
+                          {deletingPermissionId === permission.id
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </main>
     </>

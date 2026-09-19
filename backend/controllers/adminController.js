@@ -18,12 +18,22 @@ const getAdminStats = async (req, res) => {
       "SELECT COUNT(*) AS totalEmployees FROM employees",
     );
 
+    const [pendingLeaves] = await pool.execute(
+      "SELECT COUNT(*) AS pendingLeaves FROM leaves WHERE status = 'Pending'",
+    );
+
+    const [approvedLeaves] = await pool.execute(
+      "SELECT COUNT(*) AS approvedLeaves FROM leaves WHERE status = 'Approved'",
+    );
+
     res.json({
       stats: {
         totalUsers: users[0].totalUsers,
         totalRoles: roles[0].totalRoles,
         totalPermissions: permissions[0].totalPermissions,
         totalEmployees: employees[0].totalEmployees,
+        pendingLeaves: pendingLeaves[0].pendingLeaves,
+        approvedLeaves: approvedLeaves[0].approvedLeaves,
       },
     });
   } catch (error) {

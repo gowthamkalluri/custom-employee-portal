@@ -4,6 +4,9 @@ import Navbar from "../components/Navbar";
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -20,10 +23,14 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
+      setError("");
+
       const response = await api.get("/users");
       setUsers(response.data.users);
     } catch (error) {
       setError(error.response?.data?.message || "Failed to load users");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -36,6 +43,7 @@ const UserManagement = () => {
 
     setError("");
     setSuccess("");
+    setSubmitting(true);
 
     try {
       await api.post("/users", {
@@ -52,9 +60,11 @@ const UserManagement = () => {
       setPassword("");
       setRoleId("4");
 
-      fetchUsers();
+      await fetchUsers();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to create user");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -73,6 +83,7 @@ const UserManagement = () => {
 
     setError("");
     setSuccess("");
+    setSubmitting(true);
 
     try {
       await api.put(`/users/${editingUser.id}`, {
@@ -88,9 +99,11 @@ const UserManagement = () => {
       setEditEmail("");
       setEditRoleId("4");
 
-      fetchUsers();
+      await fetchUsers();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to update user");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -105,15 +118,18 @@ const UserManagement = () => {
 
     setError("");
     setSuccess("");
+    setDeletingId(user.id);
 
     try {
       await api.delete(`/users/${user.id}`);
 
       setSuccess("User deleted successfully.");
 
-      fetchUsers();
+      await fetchUsers();
     } catch (error) {
       setError(error.response?.data?.message || "Failed to delete user");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -172,16 +188,19 @@ const UserManagement = () => {
                 onChange={(event) => setRoleId(event.target.value)}
                 required
               >
-                <option value="8">Finance</option>
-                <option value="4">Support</option>
-                <option value="3">Sales</option>
+                <option value="4">Employee</option>
+                <option value="3">Manager</option>
                 <option value="2">HR</option>
                 <option value="1">Admin</option>
               </select>
             </div>
 
-            <button type="submit" className="primary-button">
-              Create User
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={submitting}
+            >
+              {submitting ? "Creating..." : "Create User"}
             </button>
           </form>
         </div>
@@ -219,23 +238,27 @@ const UserManagement = () => {
                   onChange={(event) => setEditRoleId(event.target.value)}
                   required
                 >
-                  <option value="8">Finance</option>
-                  <option value="4">Support</option>
-                  <option value="3">Sales</option>
+                  <option value="4">Employee</option>
+                  <option value="3">Manager</option>
                   <option value="2">HR</option>
                   <option value="1">Admin</option>
                 </select>
               </div>
 
               <div>
-                <button type="submit" className="primary-button">
-                  Update User
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={submitting}
+                >
+                  {submitting ? "Updating..." : "Update User"}
                 </button>
 
                 <button
                   type="button"
                   className="secondary-button"
                   onClick={() => setEditingUser(null)}
+                  disabled={submitting}
                 >
                   Cancel
                 </button>
@@ -247,7 +270,9 @@ const UserManagement = () => {
         <div className="info-card">
           <h2>Users</h2>
 
-          {users.length === 0 ? (
+          {loading ? (
+            <p>Loading users...</p>
+          ) : users.length === 0 ? (
             <p>No users found.</p>
           ) : (
             <div className="table-container">
@@ -275,6 +300,7 @@ const UserManagement = () => {
                         <button
                           className="edit-button"
                           onClick={() => handleEdit(user)}
+                          disabled={submitting || deletingId !== null}
                         >
                           Edit
                         </button>
@@ -282,8 +308,9 @@ const UserManagement = () => {
                         <button
                           className="delete-button"
                           onClick={() => handleDelete(user)}
+                          disabled={deletingId === user.id || submitting}
                         >
-                          Delete
+                          {deletingId === user.id ? "Deleting..." : "Delete"}
                         </button>
                       </td>
                     </tr>
