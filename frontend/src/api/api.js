@@ -19,7 +19,16 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401) {
+    const requestUrl = error.config?.url;
+
+    const isLoginRequest = requestUrl === "/auth/login";
+    const isRegisterRequest = requestUrl === "/auth/register";
+
+    if (
+      error.response?.status === 401 &&
+      !isLoginRequest &&
+      !isRegisterRequest
+    ) {
       localStorage.removeItem("token");
       window.location.href = "/";
     }
